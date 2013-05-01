@@ -4,5 +4,7 @@
     <string name="app_name">LocationExample</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
-
+	<string name="last_known_lat">LastLat</string>
+	<string name="last_known_long">LastLong</string>
+	<string name="update_time">Updated</string>
 </resources>
