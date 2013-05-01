@@ -47,8 +47,8 @@ public class LocationActivity extends Activity implements LocationListener {
 	String providerName;
 	Location lastKnownLocation;
 	Date lastUpdate;
-	int currentTripId = -1;
 	
+	//use dummy user (only 1 exists in the database for testing)
 	private final String USER_ID = "1";
 	
 	@Override
@@ -68,9 +68,9 @@ public class LocationActivity extends Activity implements LocationListener {
 	@Override
 	protected void onResume() {
 		super.onResume();
+		
 		// Start updates)
 		if (providerName != null) {
-			//loadSavedData();
 			manager.requestLocationUpdates(providerName, 15000, 1, this);
 		}
 	}
@@ -80,25 +80,8 @@ public class LocationActivity extends Activity implements LocationListener {
 		super.onPause();
 		// Stop updates while the app is paused and store location
 		manager.removeUpdates(this);
-		SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
-		SharedPreferences.Editor editor = sharedPref.edit();
-		editor.putFloat(getString(R.string.last_known_lat), (float)lastKnownLocation.getLatitude());
-		editor.putFloat(getString(R.string.last_known_long), (float)lastKnownLocation.getLongitude());
-		editor.putLong(getString(R.string.update_time), lastUpdate.getTime());
-		editor.commit();
 	}
 
-	private void loadSavedData() {
-		SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
-		float latitude =  sharedPref.getFloat(getResources().getString(R.string.last_known_lat), 0.0f);
-		float longitude =  sharedPref.getFloat(getResources().getString(R.string.last_known_long), 0.0f);
-		if (lastKnownLocation != null) {
-			lastKnownLocation.setLatitude(latitude);
-			lastKnownLocation.setLongitude(longitude);
-			lastUpdate = new Date(sharedPref.getLong(getString(R.string.update_time), 0));
-		}
-		 
-	}
 	
 	public void checkLocation() {
 
@@ -131,17 +114,18 @@ public class LocationActivity extends Activity implements LocationListener {
 	
 	public void onLocationChanged(Location location) {
 		
-		Toast.makeText(this, "location received", Toast.LENGTH_SHORT).show();
+		Toast.makeText(this, "Updated location received", Toast.LENGTH_SHORT).show();
 		TextView tv = (TextView)findViewById(R.id.myLocation);
 		if (location == null) {
 			tv.setText("Problem getting location");
 			return;
 		}
 		
-		//the first time the app runs, onLocationChanged will run through and just update the lastKnownLocation and lastupdate time.
-		//the next time onLocationChanged is called, it should compare the current time against the last known location time. If the time is less than one hour,
-		//then it should add a new segment to the current trip
-		//otherwise it should create a new trip
+		//the first time the app runs, onLocationChanged will just update the lastKnownLocation and updateTime.
+		//the next time onLocationChanged is called, it will compare the current time against the last update time. 
+		//If the time is less than one hour, then it adds a new segment with D = distance between currentLocation and last known
+		//and T = current time - last update time
+		//otherwise it should just update the last known location to the current location and set the time to the current time
 
 		if (lastUpdate != null && lastKnownLocation != null) {
 			
@@ -151,9 +135,7 @@ public class LocationActivity extends Activity implements LocationListener {
     		
 			if (interval > 0 && interval < 3600) {	
 				addSegment(distance, interval);
-			} //else {								//0 or more than 1 hour
-				//addSegmentToNewTrip(distance, interval);
-			//}
+			} 
 		} 
 		lastKnownLocation = location;
 		lastUpdate = new Date();
@@ -173,6 +155,7 @@ public class LocationActivity extends Activity implements LocationListener {
 		PostTask pt = new PostTask();
 		String mode = "";
 		float speed = distance/interval; //meters per second
+		
 		if (speed > 8.9) {
 			mode = "car";
 		} else if (speed > 5 && speed <= 8.9) {
@@ -186,11 +169,7 @@ public class LocationActivity extends Activity implements LocationListener {
 		pt.execute(String.valueOf(distance), String.valueOf(interval), mode);
 	}
 	
-	/*
-	private void addSegmentToNewTrip(float distance, long interval) {
-		
-	}
-	*/
+
 	public void getMetrics(int numberOfDays) {
 		GetStatsTask task = new GetStatsTask();
 		task.execute();
